@@ -18,7 +18,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         FirebaseApp.configure()
-        Firestore.enableLogging(true)
         
         // Create the SwiftUI view that provides the window contents.
         let contentView = ContentView()
