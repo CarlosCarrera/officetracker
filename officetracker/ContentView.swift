@@ -10,7 +10,7 @@ import SwiftUI
 import CoreWLAN
 
 struct ContentView: View {
-    var presenter: Presenter = Presenter()
+    @ObservedObject var presenter: Service = Service()
     let myGray: Color = Color(red: 0.5, green: 0.5, blue: 0.5)
     
     var body: some View {
@@ -31,20 +31,25 @@ struct ContentView: View {
                     )
         }
         .padding(10)
-        .onAppear {
-            presenter.getStatus()
-        }
-        
     }
 }
 
-class Presenter {
+class Service: ObservableObject {
     @Published var status: OfficeStatus = .notConnected
     let repository: NetworkRepository = NetworkRepository()
+    let resendInterval = 60.0 // 1 min
+
+    init() {
+        getStatus()
+        Timer.scheduledTimer(withTimeInterval: resendInterval, repeats: true) { [weak self] _ in
+            self?.getStatus()
+        }
+    }
+
     func getStatus() {
         let wifiClient = CWWiFiClient.shared()
         if let ssid = wifiClient.interface()?.ssid() {
-            if ssid == "Apiumhub" {
+            if ssid == "vodafone0160" {
                 status = .inside
             } else {
                 status = .outside
@@ -62,15 +67,14 @@ class NetworkRepository {
     let db = Firestore.firestore()
 
     func recordStatus(status: OfficeStatus, id: String) {
-        var ref: DocumentReference? = nil
-        ref = db.collection("userStatus").addDocument(data: [
-            "id": id,
-            "value": status.rawValue
+        db.collection("userStatus").document("\(id)").setData([
+            "value": status.rawValue,
+            "timestamp": String(format: "%.0f", Date().timeIntervalSince1970)
         ]) { err in
             if let err = err {
                 print("Error adding document: \(err)")
             } else {
-                print("Document added with ID: \(ref!.documentID)")
+                print("Document added with ID: \(id)")
             }
         }
     }
