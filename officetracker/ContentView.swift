@@ -65,30 +65,26 @@ struct ContentView: View {
 class Service: ObservableObject {
     @Published var status: OfficeStatus = .notConnected
     let repository: NetworkRepository = NetworkRepository()
-    let resendInterval = 60.0 * 3 // 1 min
+    let resendInterval = 5.0 // 1 min
+    let officeSsid = "apiumhub"
     
+    let wifiClient = CWWiFiClient.shared()
     var userData: UserData
     
     init(userData: UserData) {
         self.userData = userData
-        getStatus()
-        Timer.scheduledTimer(withTimeInterval: resendInterval, repeats: true) { [weak self] _ in
-            self?.getStatus()
-        }
+        try? wifiClient.startMonitoringEvent(with: CWEventType.ssidDidChange)
     }
-    
-    func getStatus() {
-        let wifiClient = CWWiFiClient.shared()
-        let aroundSsid = wifiClient.interfaces()?.first{$0.ssid() == "MOVISTAR_6D00"}
+}
+
+extension Service: CWEventDelegate {
+    func ssidDidChangeForWiFiInterface(withName interfaceName: String) {
+        print(interfaceName)
         
-        if let ssid = wifiClient.interface()?.ssid() {
-            if ssid == "apiumhub" || aroundSsid != nil  {
-                status = .inside
-            } else {
-                status = .outside
-            }
+        if interfaceName == officeSsid {
+            status = .inside
         } else {
-            status = .notConnected
+            status = .outside
         }
         repository.recordStatus(status: status, id: wifiClient.interface()?.hardwareAddress() ?? "unknown", username: userData.username.isEmpty ? "Unknown" : userData.username)
     }
