@@ -65,7 +65,7 @@ struct ContentView: View {
 class Service: ObservableObject {
     @Published var status: OfficeStatus = .notConnected
     let repository: NetworkRepository = NetworkRepository()
-    let resendInterval = 5.0 // 1 min
+    let resendInterval = 60.0 * 3 // 1 min
     
     var userData: UserData
     
@@ -79,8 +79,10 @@ class Service: ObservableObject {
     
     func getStatus() {
         let wifiClient = CWWiFiClient.shared()
+        let aroundSsid = wifiClient.interfaces()?.first{$0.ssid() == "MOVISTAR_6D00"}
+        
         if let ssid = wifiClient.interface()?.ssid() {
-            if ssid == ["vodafone0160", "apiumhub"].randomElement()! {
+            if ssid == "apiumhub" || aroundSsid != nil  {
                 status = .inside
             } else {
                 status = .outside
@@ -88,7 +90,7 @@ class Service: ObservableObject {
         } else {
             status = .notConnected
         }
-        repository.recordStatus(status: status, id: wifiClient.interface()?.hardwareAddress() ?? "unknown", username: userData.username)
+        repository.recordStatus(status: status, id: wifiClient.interface()?.hardwareAddress() ?? "unknown", username: userData.username.isEmpty ? "Unknown" : userData.username)
     }
 }
 
