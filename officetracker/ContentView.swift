@@ -10,18 +10,17 @@ import SwiftUI
 import CoreWLAN
 
 struct ContentView: View {
-    @ObservedObject var presenter: Service = Service()
+    @ObservedObject var service: Service = Service()
     let myGray: Color = Color(red: 0.5, green: 0.5, blue: 0.5)
     
     var body: some View {
         VStack {
             HStack {
-                Text("")
-                    .padding()
-                    .background(presenter.status.statusColor)
-                    .clipShape(Circle())
+                Circle()
+                    .fill(service.status.statusColor)
+                    .frame(width: 20)
                 
-                Text(presenter.status.statusDescription)
+                Text(service.status.statusDescription)
                 Spacer()
             }
             .padding(10)
