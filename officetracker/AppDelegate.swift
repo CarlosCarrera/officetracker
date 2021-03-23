@@ -20,7 +20,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         FirebaseApp.configure()
         
         // Create the SwiftUI view that provides the window contents.
-        let contentView = ContentView()
+        let contentView = ContentView(userData: UserData())
 
         // Create the popover
         let popover = NSPopover()
