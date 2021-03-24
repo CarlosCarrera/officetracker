@@ -19,6 +19,8 @@ struct ContentView: View {
     @State var textFieldText: String = ""
     
     @ObservedObject var userData: UserData
+
+    @State var editMode: Bool = true
     
     init(userData: UserData) {
         self.userData = userData
@@ -26,16 +28,23 @@ struct ContentView: View {
     }
     
     var body: some View {
-        let binding = Binding<String> { () -> String in
-            self.textFieldText
-        } set: {
-            self.textFieldText = $0
-            userData.username = $0
-        }
-        
         VStack {
             HStack {
-                TextField("Your name", text: binding)
+                if editMode {
+                    TextField("Your name", text: $textFieldText)
+                } else {
+                    Text(textFieldText)
+                    Spacer()
+                }
+
+                Button(editMode ? "Set" : "Edit") {
+                    if editMode {
+                        userData.username = textFieldText
+                        service.triggerStatus()
+                    }
+
+                    editMode.toggle()
+                }
             }
             .padding(10)
             .overlay(
@@ -66,7 +75,7 @@ class Service: ObservableObject {
     @Published var status: OfficeStatus = .notConnected
     let repository: NetworkRepository = NetworkRepository()
     let resendInterval = 5.0 // 1 min
-    let officeSsid = "apiumhub"
+    let officeSsid = "vodafone0160"
     
     let wifiClient = CWWiFiClient.shared()
     var userData: UserData
@@ -74,19 +83,39 @@ class Service: ObservableObject {
     init(userData: UserData) {
         self.userData = userData
         try? wifiClient.startMonitoringEvent(with: CWEventType.ssidDidChange)
+        wifiClient.delegate = self
+        triggerStatus()
+    }
+
+    func triggerStatus() {
+        guard let ssid = self.wifiClient.interface()?.ssid() else  {
+            self.status = .notConnected
+            return
+        }
+        sendStatus(ssid: ssid)
+    }
+
+    private func sendStatus(ssid: String) {
+        if ssid == self.officeSsid {
+            self.status = .inside
+        } else {
+            self.status = .outside
+        }
+        self.repository.recordStatus(status: self.status,
+                                     id: self.wifiClient.interface()?.hardwareAddress() ?? "unknown",
+                                     username: self.userData.username.isEmpty ? "Unknown" : self.userData.username)
     }
 }
 
 extension Service: CWEventDelegate {
     func ssidDidChangeForWiFiInterface(withName interfaceName: String) {
-        print(interfaceName)
-        
-        if interfaceName == officeSsid {
-            status = .inside
-        } else {
-            status = .outside
+        DispatchQueue.main.async {
+            guard let ssid = self.wifiClient.interface(withName: interfaceName)?.ssid() else  {
+                self.status = .notConnected
+                return
+            }
+            self.sendStatus(ssid: ssid)
         }
-        repository.recordStatus(status: status, id: wifiClient.interface()?.hardwareAddress() ?? "unknown", username: userData.username.isEmpty ? "Unknown" : userData.username)
     }
 }
 
