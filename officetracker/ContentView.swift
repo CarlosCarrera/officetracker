@@ -88,10 +88,7 @@ class Service: ObservableObject {
     }
 
     func triggerStatus() {
-        guard let ssid = self.wifiClient.interface()?.ssid() else  {
-            self.status = .notConnected
-            return
-        }
+        let ssid = self.wifiClient.interface()?.ssid() ?? "unknown"
         sendStatus(ssid: ssid)
     }
 
